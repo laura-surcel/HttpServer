@@ -9,7 +9,7 @@ import org.json.JSONObject;
 public class ClientManager 
 {
 	private static ClientManager mInstance = null;
-	private static HashMap<String, Client> clients = new HashMap<String, Client>();
+	private HashMap<String, Client> clients = new HashMap<String, Client>();
 	
 	public static ClientManager getInstance()
 	{

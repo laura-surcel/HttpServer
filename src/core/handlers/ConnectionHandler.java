@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.sql.SQLException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -11,13 +12,12 @@ import org.json.JSONObject;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
-import core.data.ClientManager;
+import core.data.MySqlEngine;
 
 public class ConnectionHandler implements HttpHandler 
 {
     public void handle(HttpExchange t) throws IOException 
     {
-    	System.out.println("ConnectionHandler: " + t.getRequestMethod());
     	BufferedReader inFromClient = new BufferedReader(new InputStreamReader(t.getRequestBody()));
 		
     	String body = "", line;
@@ -33,12 +33,18 @@ public class ConnectionHandler implements HttpHandler
         try 
     	{
 			JSONObject bodyJson = new JSONObject(body);
-			ClientManager.getInstance().addClient(bodyJson.getString("deviceId"));
+			MySqlEngine.getInstance().updateUser(bodyJson.getString("deviceId"), bodyJson.getBoolean("connect"));
 		} 
     	catch (JSONException e) 
     	{
     		response = "Wrong JSON Format";
     		code = 400;
+			e.printStackTrace();
+		} 
+        catch (SQLException e) 
+        {
+			response = "SQL error";
+			code = 500;
 			e.printStackTrace();
 		}
 		

@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.sql.SQLException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -12,10 +11,11 @@ import org.json.JSONObject;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
-import core.data.MySqlEngine;
+import core.data.MessageManager;
 
-public class PositionHandler implements HttpHandler 
+public class NewMessageHandler implements HttpHandler 
 {
+
 	@Override
 	public void handle(HttpExchange t) throws IOException 
 	{
@@ -26,7 +26,7 @@ public class PositionHandler implements HttpHandler
     	{
     		body = body + line;
     	}
-    	System.out.println("PositionHandler: " + body);
+    	System.out.println("NewMessageHandler: " + body);
     	
     	String response = "";
     	int code = 200;
@@ -34,30 +34,22 @@ public class PositionHandler implements HttpHandler
         try 
     	{
 			JSONObject bodyJson = new JSONObject(body);
-			String deviceId = bodyJson.getString("deviceId");
-			double lat = bodyJson.getDouble("lat");
-			double longit = bodyJson.getDouble("longit");
-			double radius = bodyJson.getDouble("radius");
-			
-			MySqlEngine.getInstance().updateUserLocation(deviceId, lat, longit);
-			response = MySqlEngine.getInstance().getNeighbours(deviceId, lat, longit, radius) + "\n";
+			String senderId = bodyJson.getString("senderId");
+			String receiverId = bodyJson.getString("receiverId");
+			String message = bodyJson.getString("msg");
+			MessageManager.getInstance().addMessageForClient(receiverId, message, senderId);
+			response = "Created";
 		} 
     	catch (JSONException e) 
     	{
     		response = "Wrong JSON Format";
     		code = 400;
 			e.printStackTrace();
-		} 
-        catch (SQLException e) 
-		{
-			response = "SQL error";
-			code = 500;
-			e.printStackTrace();
 		}
 		
         t.sendResponseHeaders(code, response.length());
         OutputStream os = t.getResponseBody();
         os.write(response.getBytes());
-        os.close();
+        os.close();		
 	}
 }
