@@ -22,6 +22,7 @@ public class MainProcess
         server.createContext("/position", new PositionHandler());
         server.createContext("/message", new NewMessageHandler());
         server.createContext("/get-messages", new GetMessagesHandler());
+        server.createContext("/remove-messages", new RemoveMessagesHandler());
         server.setExecutor(null); // creates a default executor
         
         try 

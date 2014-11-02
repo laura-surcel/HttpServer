@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.sql.SQLException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -11,7 +12,7 @@ import org.json.JSONObject;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
-import core.data.MessageManager;
+import core.data.MySqlEngine;
 
 public class NewMessageHandler implements HttpHandler 
 {
@@ -29,15 +30,15 @@ public class NewMessageHandler implements HttpHandler
     	System.out.println("NewMessageHandler: " + body);
     	
     	String response = "";
-    	int code = 200;
+    	int code = 201;
     	
         try 
     	{
 			JSONObject bodyJson = new JSONObject(body);
 			String senderId = bodyJson.getString("senderId");
 			String receiverId = bodyJson.getString("receiverId");
-			String message = bodyJson.getString("msg");
-			MessageManager.getInstance().addMessageForClient(receiverId, message, senderId);
+			int messageType = bodyJson.getInt("msgType");
+			MySqlEngine.getInstance().addMessage(senderId, receiverId, messageType);
 			response = "Created";
 		} 
     	catch (JSONException e) 
@@ -45,6 +46,12 @@ public class NewMessageHandler implements HttpHandler
     		response = "Wrong JSON Format";
     		code = 400;
 			e.printStackTrace();
+		} 
+        catch (SQLException e) 
+		{
+        	response = "SQL error";
+        	code = 500;
+        	e.printStackTrace();
 		}
 		
         t.sendResponseHeaders(code, response.length());

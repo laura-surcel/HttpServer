@@ -7,13 +7,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Properties;
-import java.util.Vector;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import com.mysql.jdbc.PreparedStatement;
 
 public class MySqlEngine 
 {	
@@ -36,6 +33,14 @@ public class MySqlEngine
         prop.setProperty("user","root");
         prop.setProperty("password","root");
 		connect = DriverManager.getConnection(url, prop);
+	}
+	
+	public void close() throws SQLException
+	{		  
+		if (connect != null) 
+		{
+			connect.close();
+		}
 	}
 	
 	public void updateUser(String deviceId, boolean active) throws SQLException
@@ -121,113 +126,85 @@ public class MySqlEngine
 		}
 	}
 	
-	public JSONArray searchFilesByCategory(String CatName) throws SQLException, JSONException
-	{
-		Statement statement  = connect.createStatement();
-		ResultSet resultSet = statement.executeQuery("select * from ipv.file where Category='"+CatName+"'");
-	    
-		JSONArray array = new JSONArray();
-		
-		while (resultSet.next())
-		{
-			JSONObject json = new JSONObject();
-			json.put("id", resultSet.getInt("File_Id"));
-			json.put("FileName",resultSet.getString("FileName"));
-			json.put("status",resultSet.getString("Status"));
-			json.put("description",resultSet.getString("Description"));
-			json.put("last_upd",resultSet.getString("Last_Upd."));
-			json.put("mod_by", resultSet.getString("mod_by"));
-			json.put("station", resultSet.getString("station"));
-			array.put(json);
-		}		
-		System.out.println("send: "+array.toString());
-		return array;
-		
-	}
-
-	public JSONObject sendSchedule() throws SQLException, JSONException
+	public void addMessage(String senderId, String receiverId, int messageType) throws SQLException
 	{
 		Statement statement = connect.createStatement();
-		Statement statement2=connect.createStatement();
-		ResultSet resultSet = statement.executeQuery("select * from ipv.schedule");
-	    ResultSet count= statement2.executeQuery("select count(*) from ipv.schedule");
-	    count.next();
-		JSONObject array = new JSONObject();
-		System.out.println(count.getInt(1));
-		array.append("count",count.getInt(1));
-		
-		while (resultSet.next())
+		String insert = "INSERT INTO bikesniffer.messages " +
+				"(`sender_id`, `receiver_id`, `type`, `date_created`) " +
+				"VALUES ('" + senderId + "', '"+ receiverId + "', "+ messageType + ", NOW())";
+		try
 		{
-			JSONObject json = new JSONObject();
-			json.put("id", resultSet.getString("Conf_id"));
-			json.put("day", resultSet.getString("day"));
-			json.put("hour", resultSet.getString("hour"));
-			array.put("array", json);
-		}	
-		System.out.println("send: "+array.toString());
-		return array;
+			statement.executeUpdate(insert);
+		}
+		catch(SQLException e)
+		{
+			throw(e);
+		}
+		finally 
+		{
+			statement.close();
+		}
 	}
 	
-	public List<String> getAgentsByIds(List<String> ids) throws SQLException
+	public String getMessagesForUser(String userId) throws JSONException, SQLException
 	{
-		Statement statement=connect.createStatement();
-		List<String> list = new Vector<String>();
-		
-		for(int i = 0; i < ids.size(); i++)
+		Statement statement = connect.createStatement();
+		String select = "SELECT id, sender_id, type FROM bikesniffer.messages " +
+						"WHERE receiver_id = '" + userId + "'";
+		try
 		{
-			ResultSet resultSet = statement.executeQuery("select Name from ipv.agents, ipv.accounts where username='"+ids.get(i)+"' and SSN=Id_Ag_Log");
-			if(resultSet.next())
+			ResultSet resultSet = statement.executeQuery(select);
+			JSONArray array = new JSONArray();
+			while (resultSet.next())
 			{
-				list.add(resultSet.getString(1));
+				JSONObject content = new JSONObject();
+				content.put("id", resultSet.getLong("id"));
+				content.put("sender_id", resultSet.getString("sender_id"));
+				content.put("type", resultSet.getInt("type"));
+				array.put(content);
+			}
+			
+			return array.toString();	
+		}
+		catch(SQLException e)
+		{
+			throw(e);
+		}
+		finally 
+		{
+			statement.close();
+		}
+	}
+	
+	public void removeMessagesOfUser(String userId, List<Long> ids) throws SQLException
+	{
+		String idsString = "";
+		for (Long id : ids)
+		{
+			if(idsString.equals(""))
+			{
+				idsString = idsString + id;
+			}
+			else
+			{
+				idsString = idsString + ", " + id;
 			}
 		}
-		
-		return list;		
-	}
-	
-	public void insertAgent(String agData) throws JSONException, SQLException{
-		JSONObject data=new JSONObject(agData);
-		PreparedStatement insert= (PreparedStatement) connect.prepareStatement("Insert into ipv.agents(SSN,Name,Age,Rank_Id,Rank,Station_id) values (?,?,?,?,?,?)");
-		insert.setString(1, data.getString("SSN"));
-		insert.setString(2, data.getString("agName"));
-		insert.setInt(3, data.getInt("age"));
-		insert.setInt(4, data.getInt("rankId"));
-		insert.setString(5, data.getString("rank"));
-		insert.setInt(6, data.getInt("stationId"));
-		insert.execute();
-	}
-	
-	public void close() throws SQLException
-	{		  
-		if (connect != null) 
+		Statement statement = connect.createStatement();
+		String select = "DELETE FROM bikesniffer.messages " +
+						"WHERE receiver_id = '" + userId + "' " +
+						"AND id IN ("+ idsString +")";
+		try
 		{
-			connect.close();
+			statement.executeUpdate(select);			
 		}
-	}
-
-	public void addStation(String stationData) throws SQLException, JSONException{
-		JSONObject data=new JSONObject(stationData);
-		ResultSet count= connect.createStatement().executeQuery("select count(*) from ipv.address");
-		count.next();
-		int rowNumber=count.getInt(1);
-		System.out.println(rowNumber);
-		PreparedStatement statement = (PreparedStatement) connect.prepareStatement("INSERT INTO ipv.address(Id_Address,Street,No,Lat,Longit) VALUES (? , ?, ?, ?, ?)");
-		statement.setInt(1,  ++rowNumber);
-		statement.setString(2, data.getString("address"));
-		statement.setInt(3, data.getInt("no"));
-		statement.setString(4, data.getString("latitude"));
-		statement.setString(5, data.getString("longit"));
-		statement.execute();
-		
-		ResultSet count2= connect.createStatement().executeQuery("select count(*) from ipv.station");
-		count2.next();
-		int rowNumber2=count.getInt(1);
-		PreparedStatement st = (PreparedStatement) connect.prepareStatement("INSERT INTO ipv.station(Station_id,Description,Station_Name,address)" +
-				" VALUES (?,?,?,?)");
-		st.setInt(1,  ++rowNumber2);
-		st.setString(2, data.getString("description"));
-		st.setString(3, data.getString("name"));
-		st.setString(4, Integer.toString(rowNumber));
-		st.execute();
+		catch(SQLException e)
+		{
+			throw(e);
+		}
+		finally 
+		{
+			statement.close();
+		}
 	}
 }
