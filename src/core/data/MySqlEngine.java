@@ -126,6 +126,37 @@ public class MySqlEngine
 		}
 	}
 	
+	public String getLocationOfUser(String userId) throws SQLException, JSONException
+	{
+		Statement statement = connect.createStatement();
+		String select = "SELECT latitude, longitude FROM bikesniffer.users " +
+						"WHERE device_id = '" + userId + "'";
+		try
+		{
+			ResultSet resultSet = statement.executeQuery(select);
+			JSONObject json = new JSONObject();
+			
+			while (resultSet.next())
+			{
+				Double lat = resultSet.getDouble("latitude");
+				Double longit = resultSet.getDouble("longitude");
+				json.put("latitude", lat);
+				json.put("longitude", longit);
+			}
+			
+			System.out.println("getLocationOfUser " + userId + ": " + json.toString());
+			return json.toString();	
+		}
+		catch(SQLException | JSONException e)
+		{
+			throw(e);
+		}
+		finally 
+		{
+			statement.close();
+		}
+	}
+	
 	public void addMessage(String senderId, String receiverId, int messageType) throws SQLException
 	{
 		Statement statement = connect.createStatement();

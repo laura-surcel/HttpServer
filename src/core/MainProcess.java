@@ -20,6 +20,7 @@ public class MainProcess
 		HttpServer server = HttpServer.create(new InetSocketAddress(3128), 0);
         server.createContext("/connect", new ConnectionHandler());
         server.createContext("/position", new PositionHandler());
+        server.createContext("/get-location-of-user", new GetLocationOfUserHandler());
         server.createContext("/message", new NewMessageHandler());
         server.createContext("/get-messages", new GetMessagesHandler());
         server.createContext("/remove-messages", new RemoveMessagesHandler());
