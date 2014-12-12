@@ -65,6 +65,27 @@ public class MySqlEngine
 		}
 	}
 	
+	public void updateUserName(String deviceId, String name) throws SQLException
+	{
+		Statement statement = connect.createStatement();
+		String insert = "INSERT INTO bikesniffer.users " +
+				"(`device_id`, `date_updated`, `name`) " +
+				"VALUES ('" + deviceId + "', NOW(), '"+ name + "') " +
+				"ON DUPLICATE KEY UPDATE date_updated = NOW(), name = '" + name + "'";
+		try
+		{
+			statement.executeUpdate(insert);
+		}
+		catch(SQLException e)
+		{
+			throw(e);
+		}
+		finally 
+		{
+			statement.close();
+		}
+	}
+	
 	public void updateUserLocation(String deviceId, double lat, double longit) throws SQLException
 	{
 		Statement statement = connect.createStatement();
@@ -88,7 +109,7 @@ public class MySqlEngine
 	public String getNeighbours(String id, double lat, double longit, double radius) throws JSONException, SQLException
 	{
 		Statement statement = connect.createStatement();
-		String select = "SELECT device_id, latitude, longitude FROM bikesniffer.users " +
+		String select = "SELECT device_id, name, latitude, longitude FROM bikesniffer.users " +
 						"WHERE active = 1";
 		try
 		{
@@ -108,6 +129,7 @@ public class MySqlEngine
 						content.put("id", idd);
 						content.put("lat", lat1);
 						content.put("longit", longit1);
+						content.put("name", resultSet.getString("name"));
 						array.put(content);
 					}
 				}
@@ -180,8 +202,10 @@ public class MySqlEngine
 	public String getMessagesForUser(String userId) throws JSONException, SQLException
 	{
 		Statement statement = connect.createStatement();
-		String select = "SELECT id, sender_id, type FROM bikesniffer.messages " +
-						"WHERE receiver_id = '" + userId + "'";
+		String select = "SELECT bikesniffer.messages.id, bikesniffer.messages.sender_id, " +
+						"bikesniffer.messages.type, bikesniffer.users.name FROM bikesniffer.messages, bikesniffer.users " +
+						"WHERE receiver_id = '" + userId + "' " +
+						"AND bikesniffer.messages.sender_id = bikesniffer.users.device_id";
 		try
 		{
 			ResultSet resultSet = statement.executeQuery(select);
@@ -191,6 +215,7 @@ public class MySqlEngine
 				JSONObject content = new JSONObject();
 				content.put("id", resultSet.getLong("id"));
 				content.put("sender_id", resultSet.getString("sender_id"));
+				content.put("sender_name", resultSet.getString("name"));
 				content.put("type", resultSet.getInt("type"));
 				array.put(content);
 			}
@@ -207,6 +232,76 @@ public class MySqlEngine
 		}
 	}
 	
+	public void addMeeting(String senderId, String receiverId) throws SQLException
+	{
+		Statement statement = connect.createStatement();
+		String insert = "INSERT INTO bikesniffer.meetings " +
+				"(`interrogator_id`, `interrogated_id`, `date_created`) " +
+				"VALUES ('" + senderId + "', '"+ receiverId + "', NOW())";
+		try
+		{
+			statement.executeUpdate(insert);
+		}
+		catch(SQLException e)
+		{
+			throw(e);
+		}
+		finally 
+		{
+			statement.close();
+		}
+	}
+	
+	public String getMeetingsForUser(String userId) throws JSONException, SQLException
+	{
+		Statement statement = connect.createStatement();
+		String select = "SELECT bikesniffer.meetings.id, bikesniffer.meetings.interrogator_id, " +
+						"bikesniffer.users.name, bikesniffer.users.latitude, bikesniffer.users.longitude FROM bikesniffer.meetings, bikesniffer.users " +
+						"WHERE interrogated_id = '" + userId + "' " +
+						"AND bikesniffer.meetings.interrogator_id = bikesniffer.users.device_id";
+		try
+		{
+			ResultSet resultSet = statement.executeQuery(select);
+			JSONArray array = new JSONArray();
+			while (resultSet.next())
+			{
+				JSONObject content = new JSONObject();
+				content.put("id", resultSet.getLong("id"));
+				content.put("interrogator_id", resultSet.getString("interrogator_id"));
+				content.put("interrogator_name", resultSet.getString("name"));
+				content.put("lat", resultSet.getDouble("latitude"));
+				content.put("longit", resultSet.getDouble("longitude"));
+				array.put(content);
+			}
+
+			select = "SELECT bikesniffer.meetings.id, bikesniffer.meetings.interrogated_id, " +
+					"bikesniffer.users.name, bikesniffer.users.latitude, bikesniffer.users.longitude FROM bikesniffer.meetings, bikesniffer.users " +
+					"WHERE interrogator_id = '" + userId + "' " +
+					"AND bikesniffer.meetings.interrogated_id = bikesniffer.users.device_id";
+			resultSet = statement.executeQuery(select);
+			
+			while (resultSet.next())
+			{
+				JSONObject content = new JSONObject();
+				content.put("id", resultSet.getLong("id"));
+				content.put("interrogated_id", resultSet.getString("interrogated_id"));
+				content.put("interrogated_name", resultSet.getString("name"));
+				content.put("lat", resultSet.getDouble("latitude"));
+				content.put("longit", resultSet.getDouble("longitude"));
+				array.put(content);
+			}
+			
+			return array.toString();	
+		}
+		catch(SQLException e)
+		{
+			throw(e);
+		}
+		finally 
+		{
+			statement.close();
+		}
+	}
 	public void removeMessagesOfUser(String userId, List<Long> ids) throws SQLException
 	{
 		String idsString = "";

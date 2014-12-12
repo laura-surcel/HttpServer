@@ -24,6 +24,9 @@ public class MainProcess
         server.createContext("/message", new NewMessageHandler());
         server.createContext("/get-messages", new GetMessagesHandler());
         server.createContext("/remove-messages", new RemoveMessagesHandler());
+        server.createContext("/accept-meeting", new AcceptMeetingHandler());
+        server.createContext("/get-meetings", new GetMeetingsHandler());
+        server.createContext("/set-name", new NameHandler());
         server.setExecutor(null); // creates a default executor
         
         try 
