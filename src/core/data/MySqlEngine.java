@@ -90,10 +90,11 @@ public class MySqlEngine
 	{
 		Statement statement = connect.createStatement();
 		String update = "UPDATE bikesniffer.users " +
-						"SET latitude = " + lat + ", longitude = " + longit + " " +
+						"SET latitude = " + lat + ", longitude = " + longit + ", date_updated = NOW() " +
 						"WHERE device_id = '" + deviceId + "'";
 		try
 		{
+			updateUser(deviceId, true);
 			statement.executeUpdate(update);
 		}
 		catch(SQLException e)
@@ -323,6 +324,27 @@ public class MySqlEngine
 		try
 		{
 			statement.executeUpdate(select);			
+		}
+		catch(SQLException e)
+		{
+			throw(e);
+		}
+		finally 
+		{
+			statement.close();
+		}
+	}
+	
+	public void closeIdleConnections() throws SQLException
+	{
+		Statement statement = connect.createStatement();
+		String update = "UPDATE bikesniffer.users " +
+						"SET active = 0 " + 
+						"WHERE date_updated + INTERVAL 10 MINUTE <= NOW() AND active = 1 AND device_id <> '1'";
+		try
+		{
+			System.out.println("close idle connections called...");
+			statement.executeUpdate(update);
 		}
 		catch(SQLException e)
 		{
